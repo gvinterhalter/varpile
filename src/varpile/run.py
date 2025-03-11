@@ -117,11 +117,14 @@ def count(opt: IOptions) -> None:
             region_dir = output / region
             futures = []
             for input_file in input_files:
+
                 # infer sex for each sample in the vcf.
                 sex_info = vcf_sex_info[input_file]
+
                 # determine the output directory
                 file_name: str = get_vcf_file_name(input_file)
                 file_output = region_dir / file_name
+                file_output.mkdir(parents=True, exist_ok=True)
 
                 # Submit the task to the process pool
                 futures.append(

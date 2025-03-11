@@ -12,15 +12,29 @@ from varpile.utils import OutFile, decode_region_string
 CON = duckdb.connect(":memory:")
 CON.query("set threads to 1")
 
+VARIANT_PILE_COLUMNS = {
+    "pos": "INT",
+    "ref": "VARCHAR",
+    "alt": "VARCHAR",
+    "XX_AC": "INT",
+    "XX_AC_hom": "INT",
+    "XX_AC_hemi": "INT",
+    "XX_n_DP_discarded": "INT",
+    "XY_AC": "INT",
+    "XY_AC_hom": "INT",
+    "XY_AC_hemi": "INT",
+    "XY_n_DP_discarded": "INT",
+    "DP": "INT",
+}
+
 
 def process_chromosome(
-    vcf_path: Path, region: str, sex_info: SamplesSex, out_path: Path, min_DP: int, debug: bool = False
+    vcf_path: Path, region: str, sex_info: SamplesSex, out_dir: Path, min_DP: int, debug: bool = False
 ):
     # define the location where we will save the chromosome data (out_path is treated as directory)
-    data_tsv = out_path / "data.tsv"
-    data_tsv.parent.mkdir(parents=True, exist_ok=True)
+    variant_pile_path = out_dir / "data.parquet"
 
-    out_file = OutFile(data_tsv)
+    out_file = OutFile(variant_pile_path, columns=VARIANT_PILE_COLUMNS)
     vcf = pysam.VariantFile(str(vcf_path))
     empty_values = "0\t0\t0\t0"  # used when there are no values (example sex=XX and we need to fill XY values)
     zero_counts = "0\t0\t0\t1"  # used when counts are zero
@@ -150,55 +164,6 @@ def iter_alleles(vcf_file: pysam.VariantFile, region: str, sex_info: SamplesSex)
                     yield common, alts[a - 1], hemi_counts  # HEMI
 
                 # TODO triploid or Multi-ploid... ?
-
-
-def data_tsv_to_parquet(path: Path, parquet_path: Path):
-    rel = read_data_tsv(path)
-    # rel = rel.select("""pos || '-' || ref || '-' || alt as vid, AC, AC_hom, AC_hemi""")
-
-    # # Bin the output
-    # rel = rel.select("*, pos // 100_000_000 as bin")
-    # CON.query(
-    #     f"copy rel to '{str(parquet_path)}' (format 'parquet', compression 'ZSTD', partition_by 'bin', OVERWRITE  true)"
-    # )
-    #
-    # # move the bins directory
-    # for bin in parquet_path.glob("bin=*"):
-    #     shutil.move(bin, parquet_path.parent)
-    #
-    # parquet_path.rmdir()  # remove the bin directory
-
-    # split on sex column
-    rel.to_parquet(str(parquet_path), compression="ZSTD")
-
-
-def read_data_tsv(path: Path) -> duckdb.DuckDBPyRelation:
-    # It's silly but duckdb read_csv did not have auto_detect=false, forcing me to use sql.
-    return CON.query(
-        f"""
-            FROM read_csv(
-                '{str(path)}',
-                columns={{
-                    'pos': 'INT',
-                    'ref': 'VARCHAR',
-                    'alt': 'VARCHAR',
-                    'XX_AC': 'INT',
-                    'XX_AC_hom': 'INT',
-                    'XX_AC_hemi': 'INT',
-                    'XX_n_DP_discarded': 'INT',
-                    'XY_AC': 'INT',
-                    'XY_AC_hom': 'INT',
-                    'XY_AC_hemi': 'INT',
-                    'XY_n_DP_discarded': 'INT',
-                    'DP': 'INT'
-                }},
-                HEADER=FALSE,
-                DELIM='\t',
-                HIVE_PARTITIONING=FALSE,
-                AUTO_DETECT=FALSE
-                 );
-        """
-    )
 
 
 def merge_piles(dir_path: Path, debug: bool = False) -> None:
