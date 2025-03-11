@@ -3,9 +3,8 @@
 import argparse
 from pathlib import Path
 
+from varpile import actions
 from varpile.errors import RegionError
-from varpile.run import count
-from varpile.actions.finalize import finalize
 
 from varpile.utils import Region1
 
@@ -69,11 +68,11 @@ def main():
     action = opt.pop("action")
 
     if action == "count":
-        count(opt)
+        actions.count(opt)
     elif action == "finalize":
-        finalize(opt["path"], opt["output"], opt["threads"])
+        actions.finalize(opt["path"], opt["output"], opt["threads"])
     elif action == "merge":
-        pass  # TOOD
+        raise NotImplementedError()
 
 
 if __name__ == "__main__":
