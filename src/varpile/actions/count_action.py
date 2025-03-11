@@ -91,7 +91,7 @@ def count(opt: IOptions) -> None:
             for sex in sex_info.values():
                 sample_number[sex] += 1
 
-        info(f"Identified {sample_number["XX"]} XX samples and {sample_number["XY"]} XY.")
+        info(f"Identified {sample_number["XX"]} XX and {sample_number["XY"]} XY sample")
 
         # Clean output directory (in case it already exists so we can cleanly overwrite data)
         if output.exists():

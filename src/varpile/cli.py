@@ -2,6 +2,7 @@
 
 import argparse
 from pathlib import Path
+import logging
 
 from varpile import actions
 from varpile.errors import RegionError
@@ -41,6 +42,9 @@ def make_parser() -> argparse.ArgumentParser:
     count_parser.add_argument("--min-DP", type=int, default=10, help="Variants with lower DP are discarded")
     count_parser.add_argument("-@", "--threads", type=int, default=1, help="Number of threads to use (default 1)")
     count_parser.add_argument("--debug", action="store_true", help="Enable debug mode that preserves per sample output")
+    count_parser.add_argument(
+        "-v", action="count", default=0, help="Increase verbosity level (use -v, -vv, -vvv for more detailed logging)"
+    )
 
     ###
     # Merge action
@@ -54,6 +58,9 @@ def make_parser() -> argparse.ArgumentParser:
     finalize_parser.add_argument("path", type=Path, help="Input counts")
     finalize_parser.add_argument("-o", "--output", type=Path, required=True, help="Output directory")
     finalize_parser.add_argument("-@", "--threads", type=int, default=1, help="Number of threads to use (default 1)")
+    finalize_parser.add_argument(
+        "-v", action="count", default=0, help="Increase verbosity level (use -v, -vv, -vvv for more detailed logging)"
+    )
 
     # we can use this to conform to a type
     # actions = {a.dest: a.type for a in parser._actions}
@@ -61,8 +68,17 @@ def make_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def configure_logging(verbosity: int):
+    """Configures logging based on the verbosity level."""
+    levels = [logging.WARNING, logging.INFO, logging.DEBUG]
+    level = levels[min(verbosity, len(levels) - 1)]
+    # logging.basicConfig(level=level, format="%(asctime)s - %(levelname)s - %(message)s")
+    logging.basicConfig(level=level, format="%(levelname)s - %(message)s")
+
+
 def main():
     args = make_parser().parse_args()
+    configure_logging(args.v)
     opt = args.__dict__
 
     action = opt.pop("action")
