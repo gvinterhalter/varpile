@@ -1,0 +1,39 @@
+[project]
+name = "varpile"
+version = "0.1.0"
+description = "A tool to aggregate allele counts from VCF files."
+requires-python = "==3.12.*"
+dependencies = [
+    #    "gnomad==0.8.2", # don't need
+    #    "hail==0.2.133", # don't need
+    "pandas==2.2.3", # probably don't need
+    "polars==1.22.0", # probably don't need
+    "pyarrow==19.0.0", # why do I need this?
+    "pysam==0.23.0",
+    "duckdb==1.2.*",
+    "tqdm>=4.67.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==8.3.4",
+    "black==25.1.0",
+    "isort==6.0.1",
+    "jupyter==1.1.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[project.scripts]
+varpile = "varpile.cli:main"
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line-length = 120
+include = '\.pyi?$'
+
