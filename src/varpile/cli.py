@@ -4,7 +4,8 @@ import argparse
 from pathlib import Path
 
 from varpile.errors import RegionError
-from varpile.run import count, finalize
+from varpile.run import count
+from varpile.actions.finalize import finalize
 
 from varpile.utils import Region1
 
@@ -22,10 +23,13 @@ class ParseRegion(argparse.Action):
 
 def make_parser() -> argparse.ArgumentParser:
     """Parses command-line arguments for the CLI."""
+
     parser = argparse.ArgumentParser(description="Varpile CLI Application")
     subparsers = parser.add_subparsers(dest="action", required=True, help="Subcommands for varpile")
 
-    # Count subcommand
+    ###
+    # Count action
+    ###
     count_parser = subparsers.add_parser("count", help="Count allele frequencies from VCF files")
     count_parser.add_argument("paths", nargs="+", type=Path, help="Provide one or several paths to file or directory")
     count_parser.add_argument("-o", "--output", type=Path, required=True, help="Specify the output directory path")
@@ -39,10 +43,14 @@ def make_parser() -> argparse.ArgumentParser:
     count_parser.add_argument("-@", "--threads", type=int, default=1, help="Number of threads to use (default 1)")
     count_parser.add_argument("--debug", action="store_true", help="Enable debug mode that preserves per sample output")
 
-    # Merge subcommand
+    ###
+    # Merge action
+    ###
     merge_parser = subparsers.add_parser("merge", help="Merge multiple count datasets into one")
 
-    # Finalize subcommand
+    ###
+    # Finalize action
+    ###
     finalize_parser = subparsers.add_parser("finalize", help="Finalize the output (calculate AN, DP_mean and DP_std")
     finalize_parser.add_argument("path", type=Path, help="Input counts")
     finalize_parser.add_argument("-o", "--output", type=Path, required=True, help="Output directory")

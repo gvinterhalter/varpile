@@ -9,7 +9,7 @@ from typing import TypedDict, Optional, Final, final
 from tqdm import tqdm
 
 import varpile
-from varpile.allele_counts import process_chromosome, merge_piles, finalize_contig
+from varpile.allele_counts import process_chromosome, merge_piles
 from varpile.infer_sex import infer_samples_sex, SamplesSex
 from varpile.utils import Region1
 
@@ -146,22 +146,3 @@ def count(opt: IOptions) -> None:
 
             info(f"Merging files for {region}")
             merge_piles(region_dir, debug=debug)
-
-
-def finalize(in_path: Path, out_path: Path, threads: int):
-
-    if out_path.exists():
-        shutil.rmtree(out_path)
-
-    out_path.mkdir(exist_ok=True)
-    info_path = in_path / "info.json"
-    shutil.copyfile(info_path, out_path / "info.json")
-
-    # Get a list of all directories under in_path
-    directories = [path for path in in_path.iterdir() if path.is_dir()]
-
-    # Process the directories in parallel using ProcessPoolExecutor
-    with ProcessPoolExecutor(threads) as executor:
-        futures = [executor.submit(finalize_contig, in_path, directory.name, out_path) for directory in directories]
-        for future in tqdm(futures, desc="Finalizing dataset"):
-            future.result()
