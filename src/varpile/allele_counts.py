@@ -25,20 +25,12 @@ def process_chromosome(
     empty_values = "0\t0\t0\t0"  # used when there are no values (example sex=XX and we need to fill XY values)
     zero_counts = "0\t0\t0\t1"  # used when counts are zero
     with out_file, vcf:
-        for (rec, sex, sample, dp), alt, (ac, ac_hom, ac_hemi) in iter_alleles(vcf, region, sex_info):
+        for (PASS, rec, sex, sample, dp), alt, (ac, ac_hom, ac_hemi) in iter_alleles(vcf, region, sex_info):
             if alt == "*":  # TODO: is this correct
                 continue
 
-            try:
-                GQ = int(sample["GQ"])
-            except Exception:
-                GQ = 0
-
-            # custom filtering
-            pass_filtering = GQ >= 20
-
             if dp >= min_DP:
-                if pass_filtering:
+                if PASS:
                     str_counts = f"{ac}\t{ac_hom}\t{ac_hemi}\t0"
                 else:
                     str_counts = empty_values  # AC is 0 but we don't decrease AN
@@ -117,13 +109,30 @@ def iter_alleles(vcf_file: pysam.VariantFile, region: str, sex_info: SamplesSex)
             # At this DP is defined for the variant, so we can be pretty sure GT is as well.
             gt = sample["GT"]
 
-            common = (record, sex, sample, dp)
+            try:
+                GQ = int(sample["GQ"])
+            except Exception:
+                GQ = 0
+
+            # custom filtering
+            PASS = GQ >= 20
+
+            common = [PASS, record, sex, sample, dp]
 
             match gt:
                 # Diploid
                 case (0, 0) | (None, None):
                     yield common, record.ref, zero_counts  # HOM_ref
                 case (0, a) | (a, 0):  # HET
+                    # Allelic balance filtering
+                    try:
+                        AD = sample["AD"]
+                        AB = AD[0] / sum(AD)  #  Allele balance
+                        if AB <= 0.2:
+                            common[0] = False
+                    except Exception:
+                        common[0] = False  # PASS = false
+
                     yield common, alts[a - 1], het_counts
                 case (a1, a2):
                     if a1 == a2:
