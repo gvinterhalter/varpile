@@ -7,7 +7,7 @@ import duckdb
 import pysam
 
 from varpile.infer_sex import SamplesSex, in_non_par_Y, in_non_par_X, PAR1_END_1, PAR2_X_BEGIN_1
-from varpile.utils import OutFile, decode_region_string
+from varpile.utils import OutFile, Region1
 
 CON = duckdb.connect(":memory:")
 CON.query("set threads to 1")
@@ -29,7 +29,7 @@ VARIANT_PILE_COLUMNS = {
 
 
 def process_chromosome(
-    vcf_path: Path, region: str, sex_info: SamplesSex, out_dir: Path, min_DP: int, debug: bool = False
+    vcf_path: Path, region: Region1, sex_info: SamplesSex, out_dir: Path, min_DP: int, debug: bool = False
 ):
     # define the location where we will save the chromosome data (out_path is treated as directory)
     variant_pile_path = out_dir / "data.parquet"
@@ -60,15 +60,12 @@ def process_chromosome(
             out_file.write_line(line)
 
 
-def iter_alleles(vcf_file: pysam.VariantFile, region: str, sex_info: SamplesSex):
-    contig, begin, end = decode_region_string(region)  # 1 based positional ar
-    if begin is not None:
-        begin -= 1  # convert begin/end to 0 based positional system
+def iter_alleles(vcf_file: pysam.VariantFile, region: Region1, sex_info: SamplesSex):
 
-    if contig not in vcf_file.header.contigs:
+    if region.contig not in vcf_file.header.contigs:
         return
 
-    vcf_records = vcf_file.fetch(contig, begin, end)
+    vcf_records = vcf_file.fetch(*region.to_pysam_tuple())
 
     sex_list = list(sex_info.values())
 
@@ -78,8 +75,8 @@ def iter_alleles(vcf_file: pysam.VariantFile, region: str, sex_info: SamplesSex)
     _het_counts: Final = (1, 0, 0)
     hemi_counts: Final = (1, 0, 1)
 
-    is_chrX = contig in ("chrX", "X")
-    is_chrY = contig in ("chrY", "Y")
+    is_chrX = region.contig in ("chrX", "X")
+    is_chrY = region.contig in ("chrY", "Y")
 
     for record in vcf_records:
 

@@ -1,0 +1,2 @@
+class RegionError(ValueError):
+    pass

@@ -11,6 +11,7 @@ from tqdm import tqdm
 import varpile
 from varpile.allele_counts import process_chromosome, merge_piles, finalize_contig
 from varpile.infer_sex import infer_samples_sex, SamplesSex
+from varpile.utils import Region1
 
 logger = logging.getLogger(__name__)
 info = logger.info
@@ -74,7 +75,7 @@ def count(opt: IOptions) -> None:
     input_files: list[Path] = find_input_files(opt["paths"])
     output: Path = opt["output"]
     threads = opt["threads"]
-    regions = opt["regions"] or CHROMOSOMES
+    regions = opt["regions"] or [Region1.from_string(x) for x in CHROMOSOMES]
     min_DP = opt["min_DP"]
     debug = opt["debug"]
 
@@ -114,7 +115,7 @@ def count(opt: IOptions) -> None:
 
         info(f"Processing chromosomes/regions:")
         for region in regions:
-            region_dir = output / region
+            region_dir = output / str(region)
             futures = []
             for input_file in input_files:
 
@@ -140,7 +141,7 @@ def count(opt: IOptions) -> None:
                 )
 
             # Wait for all tasks to be completed
-            for future in tqdm(futures, desc=region):
+            for future in tqdm(futures, desc=str(region)):
                 future.result()
 
             info(f"Merging files for {region}")

@@ -1,9 +1,13 @@
+import re
 import shutil
 from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
+from typing import ClassVar
 
 import duckdb
+
+from varpile.errors import RegionError
 
 
 class OutFile:
@@ -88,19 +92,65 @@ def flatten_dir(dir_path: Path) -> None:
     dir_path.rmdir()
 
 
-def decode_region_string(region: str) -> tuple[str, int, int] | tuple[str, int, None] | tuple[str, None, None]:
-    # Split the region. The pattern is contig[:begin[-end]]
-    try:
-        contig, begin, end = None, None, None
-        if ":" in region:
-            contig, coords = region.split(":", 1)
-            if "-" in coords:
-                begin, end = map(int, coords.split("-"))
-            else:
-                begin = int(coords)
-        else:
-            contig = region
-    except Exception:
-        raise ValueError(f"Invalid {region=}")
+@dataclass(frozen=True)
+class Region1:
+    """Genomic region (1-based)."""
 
-    return (contig, begin, end)
+    contig: str
+    begin: int | None
+    end: int | None
+
+    _REGION_PATTERN: ClassVar = re.compile(r"^(\w+)(:\d+|:\d+-\d+)?$")
+
+    def __str__(self) -> str:
+        s = self.contig
+        if self.begin is not None:
+            s += f":{self.begin}"
+        if self.end is not None:
+            s += f"-{self.end}"
+        return s
+
+    @classmethod
+    def from_string(cls, region: str) -> "Region1":
+        """Create a Region1 instance from a string.
+
+        Args:
+            s (str): Region string in the format 'contig[:start[-stop]]'.
+
+        Returns:
+            Region1: An instance of Region1 parsed from the string.
+
+        Examples:
+            >>> Region1.from_string("chr3")
+            Region1(contig='chr3', begin=None, end=None)
+            >>> Region1.from_string("chr2:150")
+            Region1(contig='chr2', begin=150, end=None)
+            >>> Region1.from_string("chr1:100-200")
+            Region1(contig='chr1', begin=100, end=200)
+        """
+
+        # Validate region pattern is correct
+        if not cls._REGION_PATTERN.match(region):
+            raise RegionError(f"Invalid region: '{region}'. Expected format: contig[:start[-stop]]")
+
+        try:
+            begin, end = None, None
+            if ":" in region:
+                contig, coords = region.split(":", 1)
+                if "-" in coords:
+                    begin, end = map(int, coords.split("-"))
+                    if begin > end:
+                        raise ValueError(f"Invalid region: '{region}', begin < end")
+                else:
+                    begin = int(coords)
+            else:
+                contig = region
+        except Exception:
+            raise ValueError(f"Invalid region: '{region}'. Expected format: contig[:start[-stop]]")
+
+        return cls(contig.strip(), begin, end)
+
+    def to_pysam_tuple(self) -> tuple:
+        """Return a tuple and convert to 0-based coordinates."""
+        begin0 = None if self.begin is None else self.begin - 1
+        return (self.contig, begin0, self.end)

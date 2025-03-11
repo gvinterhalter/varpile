@@ -3,33 +3,20 @@
 import argparse
 from pathlib import Path
 
+from varpile.errors import RegionError
 from varpile.run import count, finalize
-import re
+
+from varpile.utils import Region1
 
 
-class Region(argparse.Action):
-    """Converts a string representation of a region into a list of strings."""
+class ParseRegion(argparse.Action):
+    """Converts a string representation of a region into a list of Region1 objects."""
 
     def __call__(self, parser, namespace, values, option_string=None):
-        regions: list[str] = values.split(",")
-
-        # Validate regions are correct
-        region_pattern = re.compile(r"^(\w+)(:\d+|:\d+-\d+)?$")
-        for region in regions:
-            m = region_pattern.match(region)
-            if not m:
-                raise argparse.ArgumentError(
-                    self, f"Invalid region format: '{region}'. Expected format: contig[:start[-stop]]"
-                )
-
-            if m.group(2):
-                numbers: list[str] = m.group(2)[1:].split("-")
-                start = int(numbers[0])
-                if len(numbers) > 1:
-                    stop = int(numbers[1])
-                    if stop < start:
-                        raise argparse.ArgumentError(self, f"Invalid region format: '{region}', stop < start")
-
+        try:
+            regions = [Region1.from_string(x) for x in values.split(",")]
+        except RegionError as e:
+            raise argparse.ArgumentError(self, str(e))
         setattr(namespace, self.dest, regions)
 
 
@@ -45,8 +32,7 @@ def make_parser() -> argparse.ArgumentParser:
     count_parser.add_argument(
         "-r",
         "--regions",
-        type=str,
-        action=Region,
+        action=ParseRegion,
         help="comma separated regions of form contig[:begin[-end]] (1-based) ",
     )
     count_parser.add_argument("--min-DP", type=int, default=10, help="Variants with lower DP are discarded")
