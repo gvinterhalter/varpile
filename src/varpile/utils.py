@@ -102,6 +102,16 @@ class Region1:
 
     _REGION_PATTERN: ClassVar = re.compile(r"^(\w+)(:\d+|:\d+-\d+)?$")
 
+    def __post_init__(self):
+        self._validate_coordinates()
+
+    def _validate_coordinates(self):
+        if self.begin is None and self.end is not None:
+            raise RegionError(f"Invalid region: {repr(self)}")
+        if self.begin is not None and self.end is not None:
+            if self.begin > self.end:
+                raise RegionError(f"Invalid region: '{self}', begin < end")
+
     def __str__(self) -> str:
         s = self.contig
         if self.begin is not None:
@@ -139,14 +149,12 @@ class Region1:
                 contig, coords = region.split(":", 1)
                 if "-" in coords:
                     begin, end = map(int, coords.split("-"))
-                    if begin > end:
-                        raise ValueError(f"Invalid region: '{region}', begin < end")
                 else:
                     begin = int(coords)
             else:
                 contig = region
         except Exception:
-            raise ValueError(f"Invalid region: '{region}'. Expected format: contig[:start[-stop]]")
+            raise RegionError(f"Invalid region: '{region}'. Expected format: contig[:start[-stop]]")
 
         return cls(contig.strip(), begin, end)
 
