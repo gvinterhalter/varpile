@@ -137,7 +137,7 @@ def iter_alleles(vcf_file: pysam.VariantFile, region: Region1, sex_info: Samples
                     # Allelic balance filtering
                     try:
                         AD = sample["AD"]
-                        AB = AD[0] / sum(AD)  #  Allele balance
+                        AB = AD[a] / sum(AD)  #  Allele balance
                         if AB <= 0.2:
                             common[0] = False
                     except Exception:
