@@ -1,6 +1,6 @@
 import shutil
 from pathlib import Path
-from typing import Final
+from typing import Final, TypedDict
 
 import duckdb
 import pysam
@@ -27,18 +27,34 @@ VARIANT_PILE_COLUMNS = {
 }
 
 
+class IFilterValues(TypedDict):
+    """FilterValues to use"""
+
+    min_DP: int
+    min_GQ: int
+    min_AB: float  # Allelic Balance
+
+
 def process_chromosome(
-    vcf_path: Path, region: Region1, sex_info: SamplesSex, out_dir: Path, min_DP: int, debug: bool = False
+    vcf_path: Path,
+    region: Region1,
+    sex_info: SamplesSex,
+    out_dir: Path,
+    filter_values: IFilterValues,
+    debug: bool = False,
 ):
     # define the location where we will save the chromosome data (out_path is treated as directory)
     variant_pile_path = out_dir / "data.parquet"
+
+    min_DP = filter_values["min_DP"]
 
     out_file = OutFile(variant_pile_path, columns=VARIANT_PILE_COLUMNS)
     vcf = pysam.VariantFile(str(vcf_path))
     empty_values = "0\t0\t0\t0"  # used when there are no values (example sex=XX and we need to fill XY values)
     zero_counts = "0\t0\t0\t1"  # used when counts are zero
     with out_file, vcf:
-        for (PASS, rec, sex, sample, dp), alt, (ac, ac_hom, ac_hemi) in iter_alleles(vcf, region, sex_info):
+        alleles = iter_alleles(vcf, region, sex_info, filter_values)
+        for (PASS, rec, sex, sample, dp), alt, (ac, ac_hom, ac_hemi) in alleles:
             if alt == "*":  # TODO: is this correct
                 continue
 
@@ -59,7 +75,10 @@ def process_chromosome(
             out_file.write_line(line)
 
 
-def iter_alleles(vcf_file: pysam.VariantFile, region: Region1, sex_info: SamplesSex):
+def iter_alleles(vcf_file: pysam.VariantFile, region: Region1, sex_info: SamplesSex, filter_values: IFilterValues):
+
+    min_GQ = filter_values["min_GQ"]
+    min_AB = filter_values["min_AB"]
 
     if region.contig not in vcf_file.header.contigs:
         return
@@ -125,7 +144,7 @@ def iter_alleles(vcf_file: pysam.VariantFile, region: Region1, sex_info: Samples
                 GQ = 0
 
             # custom filtering
-            PASS = GQ >= 20
+            PASS = GQ >= min_GQ
 
             common = [PASS, record, sex, sample, dp]
 
@@ -138,7 +157,7 @@ def iter_alleles(vcf_file: pysam.VariantFile, region: Region1, sex_info: Samples
                     try:
                         AD = sample["AD"]
                         AB = AD[a] / sum(AD)  #  Allele balance
-                        if AB <= 0.2:
+                        if AB <= min_AB:
                             common[0] = False
                     except Exception:
                         common[0] = False  # PASS = false

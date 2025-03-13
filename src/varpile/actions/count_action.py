@@ -65,9 +65,13 @@ class IOptions(TypedDict):
     paths: list[Path]
     output: Path
     regions: Optional[list]
-    min_DP: int
     threads: int
     debug: bool
+
+    # filtering
+    min_DP: int
+    min_GQ: int
+    min_AB: float
 
 
 def count(opt: IOptions) -> None:
@@ -78,6 +82,8 @@ def count(opt: IOptions) -> None:
     regions = opt["regions"] or [Region1.from_string(x) for x in CHROMOSOMES]
     min_DP = opt["min_DP"]
     debug = opt["debug"]
+
+    AC0_filter = {"min_DP": opt["min_DP"], "min_GQ": opt["min_GQ"], "min_AB": opt["min_AB"]}
 
     with ProcessPoolExecutor(threads) as executor:
 
@@ -107,8 +113,8 @@ def count(opt: IOptions) -> None:
             json.dumps(
                 {
                     "version": varpile.__VERSION__,
-                    "min_DP": min_DP,
                     "sample_number": sample_number,
+                    "AC0_filter": AC0_filter,
                 }
             )
         )
@@ -135,7 +141,7 @@ def count(opt: IOptions) -> None:
                         region,
                         sex_info,
                         file_output,
-                        min_DP,
+                        AC0_filter,
                         debug=debug,
                     )
                 )
