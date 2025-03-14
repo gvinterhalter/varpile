@@ -5,6 +5,7 @@ from typing import Final, TypedDict
 import duckdb
 import pysam
 
+from varpile.VariantFile import VariantFile
 from varpile.infer_sex import SamplesSex, in_non_par_Y, in_non_par_X
 from varpile.utils import OutFile, Region1
 
@@ -49,7 +50,7 @@ def process_chromosome(
     min_DP = filter_values["min_DP"]
 
     out_file = OutFile(variant_pile_path, columns=VARIANT_PILE_COLUMNS)
-    vcf = pysam.VariantFile(str(vcf_path))
+    vcf = VariantFile(vcf_path)
     empty_values = "0\t0\t0\t0"  # used when there are no values (example sex=XX and we need to fill XY values)
     zero_counts = "0\t0\t0\t1"  # used when counts are zero
     with out_file, vcf:
@@ -75,15 +76,12 @@ def process_chromosome(
             out_file.write_line(line)
 
 
-def iter_alleles(vcf_file: pysam.VariantFile, region: Region1, sex_info: SamplesSex, filter_values: IFilterValues):
+def iter_alleles(vcf_file: VariantFile, region: Region1, sex_info: SamplesSex, filter_values: IFilterValues):
 
     min_GQ = filter_values["min_GQ"]
     min_AB = filter_values["min_AB"]
 
-    if region.contig not in vcf_file.header.contigs:
-        return
-
-    vcf_records = vcf_file.fetch(*region.to_pysam_tuple())
+    vcf_records = vcf_file.fetch(region)
 
     sex_list = list(sex_info.values())
 
@@ -96,7 +94,13 @@ def iter_alleles(vcf_file: pysam.VariantFile, region: Region1, sex_info: Samples
     is_chrX = region.contig in ("chrX", "X")
     is_chrY = region.contig in ("chrY", "Y")
 
+    record: pysam.VariantRecord
+    sample: pysam.VariantRecordSample
     for record in vcf_records:
+
+        # If the record is a GVCF block ignore it (at the moment we discard this information)
+        if record.alleles[1] == "<NON_REF>":
+            continue
 
         alts = record.alts
 

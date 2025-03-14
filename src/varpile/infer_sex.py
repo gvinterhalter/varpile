@@ -26,9 +26,15 @@ chromosome:GRCh38:Y:57,217,416 - 57,227,415 is unique to Y
 156,040,895
 """
 
+import logging
 from pathlib import Path
 from typing import Literal
 import pysam
+
+from varpile.VariantFile import VariantFile
+from varpile.utils import Region1
+
+logger = logging.getLogger(__name__)
 
 # GRCh38 PAR regions
 
@@ -81,10 +87,10 @@ def infer_sex(input_file: Path | str, sample_rank: int = 0) -> Sex:
         Sex: 'XX' if the sample is inferred to be female, or 'XY' if inferred to be male.
     """
 
-    with pysam.VariantFile(str(input_file)) as f:
+    with VariantFile(input_file) as f:
 
-        # This is the large non-PAR
-        X_non_par_region_iter = f.fetch("chrX", PAR1_END_1 - 1, PAR2_X_BEGIN_1)
+        non_PAR_region_on_X = Region1("chrX", PAR1_END_1 + 1, PAR2_X_BEGIN_1 - 1)
+        X_non_par_region_iter = f.fetch(non_PAR_region_on_X)
 
         hom_event = 0
         het_event = 0
@@ -107,10 +113,15 @@ def infer_sex(input_file: Path | str, sample_rank: int = 0) -> Sex:
                 case wtf:
                     raise ValueError("Unexpected genotype format:", wtf)
 
-        # TODO: what if there are no variants (0 divided by 0)
-        het_fraction = het_event / (hom_event + het_event)
-        # print(hom_event, het_event,   "het_fraction:", het_fraction)
+        # In case there are no variants (chrX is missing for example)
+        # we can't divide by 0. Instead assume the sample is XX
+        total = hom_event + het_event
+        if total == 0:
+            sample_name = f.header.samples[sample_rank]
+            logger.warning(f"Sex inference not possible, assume the sample '{sample_name}' is XX.")
+            return "XX"
 
+        het_fraction = het_event / total
         if het_fraction < FRACTION_LIMIT:
             return "XY"  # Male
         else:
