@@ -56,7 +56,9 @@ def process_chromosome(
     with out_file, vcf:
         alleles = iter_alleles(vcf, region, sex_info, filter_values)
         for (PASS, rec, sex, sample, dp), alt, (ac, ac_hom, ac_hemi) in alleles:
-            if alt == "*":  # TODO: is this correct
+            # Exclude allele that refers to a spanning deletion
+            # https://gatk.broadinstitute.org/hc/en-us/articles/360035531912-Spanning-or-overlapping-deletions-allele
+            if alt == "*":
                 continue
 
             if dp >= min_DP:
