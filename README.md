@@ -33,6 +33,10 @@ In the output directory `info.json` file will keep track of the sample number (p
 - Above we provide a list of 2 files a directory and then another list of files (globing is done by shell)
 - In case of directory all accepted files in the directory will be processed.
 - `-@` is specifying the number of threads to use. Multithreading is done per file.
+- Filtering:
+  - We do filtering on Depth (DP), Allelic balance (AB) and Genotype Quality(GQ)
+  - If the variants fall any of these criteria it's not present in the allele count (we still keep track of DP values)
+  - The default values are `--min-DP 10 --min-GQ 20  --min-AB  0.2` 
 
 Processing can be limited to chromosomes or regions using the `-r`, `--regions`.
 Format is familiar comma separated `'chromosome[:start[-stop]]'` (1-based position).

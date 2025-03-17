@@ -39,12 +39,17 @@ def make_parser() -> argparse.ArgumentParser:
         action=ParseRegion,
         help="comma separated regions of form contig[:begin[-end]] (1-based) ",
     )
-    count_parser.add_argument("--min-DP", type=int, default=10, help="Variants with lower DP (depth) are discarded")
     count_parser.add_argument(
-        "--min-GQ", type=int, default=20, help="Variants with lower GQ (genotype quality) are discarded"
+        "--min-DP", type=int, default=10, help="Variants with lower DP (depth) are discarded (default 10)"
     )
     count_parser.add_argument(
-        "--min-AB", type=float, default=0.2, help="Heterozygote calls with lower AB (allelic bias) are discarded"
+        "--min-GQ", type=int, default=20, help="Variants with lower GQ (genotype quality) are discarded (default 20)"
+    )
+    count_parser.add_argument(
+        "--min-AB",
+        type=float,
+        default=0.2,
+        help="Heterozygote calls with lower AB (allelic bias) are discarded (default 0.2)",
     )
     count_parser.add_argument("-@", "--threads", type=int, default=1, help="Number of threads to use (default 1)")
     count_parser.add_argument("--debug", action="store_true", help="Enable debug mode that preserves per sample output")
