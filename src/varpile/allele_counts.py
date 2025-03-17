@@ -159,13 +159,9 @@ def iter_alleles(vcf_file: VariantFile, region: Region1, sex_info: SamplesSex, f
                 case (0, 0) | (None, None):
                     yield common, record.ref, zero_counts  # HOM_ref
                 case (0, a) | (a, 0):  # HET
-                    # Allelic balance filtering
-                    try:
-                        AD = sample["AD"]
-                        AB = AD[a] / sum(AD)  #  Allele balance
-                        if AB <= min_AB:
-                            common[0] = False
-                    except Exception:
+                    # Allelic balance (AB) filtering
+                    AB = get_AB(sample, a)
+                    if AB <= min_AB:
                         common[0] = False  # PASS = false
 
                     yield common, alts[a - 1], het_counts
@@ -173,9 +169,22 @@ def iter_alleles(vcf_file: VariantFile, region: Region1, sex_info: SamplesSex, f
                     if a1 == a2:
                         # HOM_alt
                         yield common, alts[a1 - 1], hom_alt_counts
-                    else:
-                        # Multi allelic
+                    else:  # Multi allelic
+
+                        # Allelic balance (AB) filtering for a1
+                        old_pass_value = common[0]  # backup
+                        AB1 = get_AB(sample, a1)
+                        if AB1 <= min_AB:
+                            common[0] = False
+
                         yield common, alts[a1 - 1], het_counts
+
+                        # Allelic balance (AB) filtering for a2
+                        AB2 = get_AB(sample, a2)
+                        if AB2 <= min_AB:
+                            common[0] = False
+                        else:
+                            common[0] = old_pass_value
                         yield common, alts[a2 - 1], het_counts
 
                 # Haploid
@@ -185,6 +194,14 @@ def iter_alleles(vcf_file: VariantFile, region: Region1, sex_info: SamplesSex, f
                     yield common, alts[a - 1], hemi_counts  # HEMI
 
                 # TODO triploid or Multi-ploid... ?
+
+
+def get_AB(sample, allele_index_1: int) -> float:
+    try:
+        AD = sample["AD"]
+        return AD[allele_index_1 - 1] / int(sample["DP"])  # Allele balance
+    except Exception:
+        return 0
 
 
 def merge_piles(dir_path: Path, debug: bool = False) -> None:
