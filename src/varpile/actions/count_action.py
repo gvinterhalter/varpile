@@ -80,7 +80,6 @@ def count(opt: IOptions) -> None:
     output: Path = opt["output"]
     threads = opt["threads"]
     regions = opt["regions"] or [Region1.from_string(x) for x in CHROMOSOMES]
-    min_DP = opt["min_DP"]
     debug = opt["debug"]
 
     AC0_filter = {"min_DP": opt["min_DP"], "min_GQ": opt["min_GQ"], "min_AB": opt["min_AB"]}
@@ -115,7 +114,8 @@ def count(opt: IOptions) -> None:
                     "version": varpile.__VERSION__,
                     "sample_number": sample_number,
                     "AC0_filter": AC0_filter,
-                }
+                },
+                indent=4,
             )
         )
 

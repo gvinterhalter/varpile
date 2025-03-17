@@ -1,4 +1,5 @@
 import os
+import sys
 import re
 import shutil
 from dataclasses import dataclass
@@ -150,3 +151,8 @@ class Region1:
         """Return a tuple and convert to 0-based coordinates."""
         begin0 = None if self.begin is None else self.begin - 1
         return (self.contig, begin0, self.end)
+
+
+def is_test() -> bool:
+    """Return True if the unit tests are executing."""
+    return "pytest" in sys.modules
